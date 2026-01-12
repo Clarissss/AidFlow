@@ -1,0 +1,136 @@
+<div class="home-container">
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1 class="hero-title">AidFlow</h1>
+      <p class="hero-subtitle">Sistem Manajemen Bantuan Bencana yang Efektif</p>
+      <p class="hero-description">
+        Platform terintegrasi untuk mengelola bantuan bencana, dari donasi hingga distribusi ke lapangan
+      </p>
+      <div class="hero-actions">
+        <a routerLink="/login" class="btn btn-primary">Login</a>
+        <button (click)="toggleDonationForm()" class="btn btn-secondary">Donasi Sekarang</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section">
+    <div class="container">
+      <h2 class="section-title">Fitur Utama</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Manajemen Inventory</h3>
+          <p>Kelola stok barang bantuan dengan mudah dan real-time</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✅</div>
+          <h3>Approval System</h3>
+          <p>Sistem persetujuan yang cepat untuk permintaan bantuan</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚚</div>
+          <h3>Request Management</h3>
+          <p>Permintaan bantuan dari lapangan dapat dikelola dengan efisien</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💝</div>
+          <h3>Donasi</h3>
+          <p>Terima donasi dari masyarakat untuk membantu korban bencana</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Donation Form Modal -->
+  <div *ngIf="showDonationForm" class="modal-overlay" (click)="toggleDonationForm()">
+    <div class="modal-content donation-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Form Donasi</h2>
+        <button class="close-btn" (click)="toggleDonationForm()">&times;</button>
+      </div>
+      
+      <div *ngIf="donationSubmitted" class="success-message">
+        <p>✅ Terima kasih! Donasi Anda telah tercatat. Kami akan menghubungi Anda segera.</p>
+      </div>
+
+      <form *ngIf="!donationSubmitted" (ngSubmit)="submitDonation()" class="donation-form">
+        <div class="form-group">
+          <label>Nama Donatur *</label>
+          <input type="text" [(ngModel)]="donationForm.donorName" name="donorName" required />
+        </div>
+
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" [(ngModel)]="donationForm.email" name="email" required />
+        </div>
+
+        <div class="form-group">
+          <label>No. Telepon</label>
+          <input type="tel" [(ngModel)]="donationForm.phone" name="phone" />
+        </div>
+
+        <div class="form-group">
+          <label>Jumlah Donasi (Rupiah)</label>
+          <input type="number" [(ngModel)]="donationForm.amount" name="amount" min="0" />
+        </div>
+
+        <!-- Barang Donasi dari List Inventory -->
+        <div class="form-group">
+          <label>Pilih Barang yang Ingin Didonasikan</label>
+          <div class="donation-items-list">
+            <div *ngFor="let item of inventory" class="donation-item">
+              <div class="donation-item-info">
+                <strong>{{ item.name }}</strong>
+                <span class="item-category">{{ item.category }}</span>
+              </div>
+              <div class="donation-item-input">
+                <input 
+                  type="number" 
+                  [value]="selectedDonationItems.get(item.id) || 0"
+                  (change)="addDonationItem(item, +$any($event.target).value)"
+                  min="0"
+                  class="quantity-input"
+                  placeholder="0"
+                />
+                <span class="unit">{{ item.unit }}</span>
+                <button 
+                  *ngIf="selectedDonationItems.has(item.id)"
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  (click)="removeDonationItem(item.id)"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="inventory.length === 0" class="empty-state-small">
+            Belum ada barang tersedia
+          </div>
+        </div>
+
+        <!-- Summary Barang yang Dipilih -->
+        <div *ngIf="getSelectedDonationItemsCount() > 0" class="selected-donation-summary">
+          <h4>Barang yang Akan Didonasikan ({{ getSelectedDonationItemsCount() }}):</h4>
+          <ul>
+            <li *ngFor="let item of getSelectedDonationItemsList()">
+              {{ item.name }} - {{ item.quantity }} {{ item.unit }}
+            </li>
+          </ul>
+        </div>
+
+        <div class="form-group">
+          <label>Pesan</label>
+          <textarea [(ngModel)]="donationForm.message" name="message" rows="3" placeholder="Pesan atau catatan tambahan"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="toggleDonationForm()">Batal</button>
+          <button type="submit" class="btn btn-primary">Kirim Donasi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

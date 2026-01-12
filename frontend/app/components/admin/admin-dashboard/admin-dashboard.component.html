@@ -1,0 +1,303 @@
+<div class="admin-dashboard">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <h1>AidFlow - Admin Dashboard</h1>
+      <div class="header-actions">
+        <span class="user-info">Selamat datang, {{ currentUser?.name }}</span>
+        <button class="btn btn-logout" (click)="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'inventory'" (click)="activeTab = 'inventory'">
+      📦 Manajemen Inventory
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'requests'" (click)="activeTab = 'requests'">
+      ✅ Permintaan Bantuan
+      <span *ngIf="getPendingRequests().length > 0" class="badge">{{ getPendingRequests().length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'new-item-requests'" (click)="activeTab = 'new-item-requests'">
+      🆕 Request Barang Baru
+      <span *ngIf="getPendingNewItemRequests().length > 0" class="badge">{{ getPendingNewItemRequests().length }}</span>
+    </button>
+  </div>
+
+  <!-- Inventory Tab -->
+  <div *ngIf="activeTab === 'inventory'" class="tab-content">
+    <div class="section-header">
+      <h2>Daftar Inventory</h2>
+      <button class="btn btn-primary" (click)="toggleAddItemForm()">
+        + Tambah Barang
+      </button>
+    </div>
+
+    <!-- Add Item Form -->
+    <div *ngIf="showAddItemForm" class="form-card">
+      <h3>Tambah Barang Baru</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nama Barang *</label>
+          <input type="text" [(ngModel)]="newItem.name" />
+        </div>
+        <div class="form-group">
+          <label>Kategori *</label>
+          <input type="text" [(ngModel)]="newItem.category" />
+        </div>
+        <div class="form-group">
+          <label>Jumlah</label>
+          <input type="number" [(ngModel)]="newItem.quantity" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Satuan *</label>
+          <input type="text" [(ngModel)]="newItem.unit" placeholder="buah, paket, dll" />
+        </div>
+        <div class="form-group full-width">
+          <label>Deskripsi</label>
+          <textarea [(ngModel)]="newItem.description" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="toggleAddItemForm()">Batal</button>
+        <button class="btn btn-primary" (click)="addItem()">Tambah</button>
+      </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nama Barang</th>
+            <th>Kategori</th>
+            <th>Jumlah</th>
+            <th>Satuan</th>
+            <th>Deskripsi</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of inventory">
+            <td>{{ item.name }}</td>
+            <td>{{ item.category }}</td>
+            <td>
+              <input type="number" [value]="item.quantity" (change)="updateQuantity(item, +$any($event.target).value)"
+                class="quantity-input" min="0" />
+            </td>
+            <td>{{ item.unit }}</td>
+            <td>{{ item.description || '-' }}</td>
+            <td>
+              <button class="btn btn-danger btn-sm" (click)="deleteItem(item)">
+                Hapus
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="inventory.length === 0">
+            <td colspan="6" class="empty-state">Belum ada data inventory</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Requests Tab -->
+  <div *ngIf="activeTab === 'requests'" class="tab-content">
+    <div class="section-header">
+      <h2>Permintaan Bantuan dari Lapangan</h2>
+    </div>
+
+    <div class="requests-grid">
+      <div *ngFor="let request of requests" class="request-card">
+        <div class="request-header">
+          <div>
+            <h3>Request #{{ request.id }}</h3>
+            <p class="request-meta">
+              Dari: {{ request.fieldWorkerName }}<br>
+              Tanggal: {{ request.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            </p>
+          </div>
+          <span class="badge" [ngClass]="getStatusBadgeClass(request.status)">
+            {{ request.status === 'PENDING' ? 'Menunggu' : request.status === 'APPROVED' ? 'Disetujui' : 'Ditolak' }}
+          </span>
+        </div>
+
+        <div class="request-items">
+          <h4>Barang yang Diminta:</h4>
+          <ul>
+            <li *ngFor="let item of request.items">
+              {{ item.inventoryItemName }} - {{ item.quantity }} {{ getItemUnit(item.inventoryItemId) }}
+            </li>
+          </ul>
+        </div>
+
+        <div *ngIf="request.notes" class="request-notes">
+          <strong>Catatan:</strong> {{ request.notes }}
+        </div>
+
+        <div *ngIf="request.status === 'PENDING'" class="request-actions">
+          <button class="btn btn-success btn-sm" (click)="viewRequest(request)">
+            Lihat Detail
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="requests.length === 0" class="empty-state">
+        Belum ada permintaan bantuan
+      </div>
+    </div>
+  </div>
+
+  <!-- New Item Requests Tab -->
+  <div *ngIf="activeTab === 'new-item-requests'" class="tab-content">
+    <div class="section-header">
+      <h2>Request Barang Baru dari Lapangan</h2>
+    </div>
+
+    <div class="requests-grid">
+      <div *ngFor="let request of newItemRequests" class="request-card">
+        <div class="request-header">
+          <div>
+            <h3>New Item Request #{{ request.id }}</h3>
+            <p class="request-meta">
+              Dari: {{ request.fieldWorkerName }}<br>
+              Tanggal: {{ request.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            </p>
+          </div>
+          <span class="badge" [ngClass]="getStatusBadgeClass(request.status)">
+            {{ request.status === 'PENDING' ? 'Menunggu' : request.status === 'APPROVED' ? 'Disetujui' : 'Ditolak' }}
+          </span>
+        </div>
+
+        <div class="request-items">
+          <h4>Detail Barang yang Diminta:</h4>
+          <ul>
+            <li><strong>Nama:</strong> {{ request.itemName }}</li>
+            <li><strong>Kategori:</strong> {{ request.category }}</li>
+            <li><strong>Jumlah:</strong> {{ request.requestedQuantity }} {{ request.unit }}</li>
+            <li *ngIf="request.description"><strong>Deskripsi:</strong> {{ request.description }}</li>
+          </ul>
+        </div>
+
+        <div *ngIf="request.notes" class="request-notes">
+          <strong>Catatan:</strong> {{ request.notes }}
+        </div>
+
+        <div *ngIf="request.status === 'PENDING'" class="request-actions">
+          <button class="btn btn-success btn-sm" (click)="viewNewItemRequest(request)">
+            Lihat Detail
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="newItemRequests.length === 0" class="empty-state">
+        Belum ada request barang baru
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Detail Modal -->
+  <div *ngIf="selectedRequest" class="modal-overlay" (click)="closeRequestView()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Detail Permintaan</h2>
+        <button class="close-btn" (click)="closeRequestView()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-section">
+          <h3>Informasi Request</h3>
+          <p><strong>ID:</strong> {{ selectedRequest.id }}</p>
+          <p><strong>Field Worker:</strong> {{ selectedRequest.fieldWorkerName }}</p>
+          <p><strong>Tanggal:</strong> {{ selectedRequest.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+
+        <div class="detail-section">
+          <h3>Barang yang Diminta</h3>
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Nama Barang</th>
+                <th>Jumlah</th>
+                <th>Stok Tersedia</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedRequest.items">
+                <td>{{ item.inventoryItemName }}</td>
+                <td>{{ item.quantity }} {{ getItemUnit(item.inventoryItemId) }}</td>
+                <td>{{ getItemQuantity(item.inventoryItemId) }} {{ getItemUnit(item.inventoryItemId) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="detail-section">
+          <label>Catatan (opsional):</label>
+          <textarea [(ngModel)]="approvalNotes" rows="3"
+            placeholder="Tambahkan catatan untuk persetujuan/penolakan"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-danger" (click)="rejectRequest()">Tolak</button>
+        <button class="btn btn-success" (click)="approveRequest()">Setujui</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Item Request Detail Modal -->
+  <div *ngIf="selectedNewItemRequest" class="modal-overlay" (click)="closeNewItemRequestView()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Detail Request Barang Baru</h2>
+        <button class="close-btn" (click)="closeNewItemRequestView()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-section">
+          <h3>Informasi Request</h3>
+          <p><strong>ID:</strong> {{ selectedNewItemRequest.id }}</p>
+          <p><strong>Field Worker:</strong> {{ selectedNewItemRequest.fieldWorkerName }}</p>
+          <p><strong>Tanggal:</strong> {{ selectedNewItemRequest.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+
+        <div class="detail-section">
+          <h3>Detail Barang yang Diminta</h3>
+          <table class="detail-table">
+            <tbody>
+              <tr>
+                <td><strong>Nama Barang</strong></td>
+                <td>{{ selectedNewItemRequest.itemName }}</td>
+              </tr>
+              <tr>
+                <td><strong>Kategori</strong></td>
+                <td>{{ selectedNewItemRequest.category }}</td>
+              </tr>
+              <tr>
+                <td><strong>Jumlah</strong></td>
+                <td>{{ selectedNewItemRequest.requestedQuantity }} {{ selectedNewItemRequest.unit }}</td>
+              </tr>
+              <tr *ngIf="selectedNewItemRequest.description">
+                <td><strong>Deskripsi</strong></td>
+                <td>{{ selectedNewItemRequest.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="detail-section">
+          <label>Catatan (opsional):</label>
+          <textarea [(ngModel)]="newItemApprovalNotes" rows="3"
+            placeholder="Tambahkan catatan untuk persetujuan/penolakan"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-danger" (click)="rejectNewItemRequest()">Tolak</button>
+        <button class="btn btn-success" (click)="approveNewItemRequest()">Setujui & Tambah ke Inventory</button>
+      </div>
+    </div>
+  </div>
+</div>
